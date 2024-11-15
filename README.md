@@ -55,9 +55,9 @@ The primary objective is to develop a research tool that:
 
 ---
 ## Contribution
-- Aniket Patole - 45% - Airflow dags (docling,embeddings), Streamlit - RAGagent, Online Agent, Arxiv agent full code with implementation, Report and codelabs generation, Readme
+- Aniket Patole - 40% - Airflow dags (docling,embeddings), Streamlit - RAGagent, Online Agent, Arxiv agent full code with implementation, Report and codelabs generation, Readme
 - Saurabh Vywahare - 30% - FastAPI and streamlit full connection and logic for all agents, Documentation, Codelabs, Deployment from scratch, Langgrapgh impletementation
-- Shreya Bage - 25% - Airflow dags help, Arxiv agent full, RAG Agent half logic.
+- Shreya Bage - 30% - Airflow dags help, docling, Arxiv agent , RAG Agent.
 ---
 ## 🚀 Setup Instructions
 
