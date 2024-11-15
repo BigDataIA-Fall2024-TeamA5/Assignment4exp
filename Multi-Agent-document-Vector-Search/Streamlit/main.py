@@ -6,7 +6,8 @@ from urllib.parse import urlparse
 from rag_agent import RAGAgent
 from arxiv_agent import ArxivAgent
 from web_search_agent import WebSearchAgent
-
+from report import generate_report
+from codelabs import generate_codelabs
 # Load environment variables
 load_dotenv()
 
@@ -169,12 +170,33 @@ def research_interface():
         st.session_state['chat_history'].append((user_question, results.get('answer', 'No answer generated.')))
 
     # Display chat history
-    st.subheader("Chat History")
+    st.subheader("Research Notes")
     if st.session_state['chat_history']:
         for i, (question, answer) in enumerate(st.session_state['chat_history'], start=1):
             st.text(f"Q{i}: {question}")
             st.text(f"A: {answer}")
 
+    # Button to generate a report
+    if st.button("Generate Report"):
+        output_file = generate_report(st.session_state['chat_history'])
+        if output_file:
+            with open(output_file, "rb") as file:
+                st.download_button(
+                    label="Download Report",
+                    data=file,
+                    file_name=os.path.basename(output_file),
+                    mime="application/pdf",
+                )
+    if st.button("Generate Codelabs"):
+        output_file = generate_codelabs(st.session_state['chat_history'])
+        if output_file:
+            with open(output_file, "rb") as file:
+                st.download_button(
+                    label="Download Codelabs",
+                    data=file,
+                    file_name=os.path.basename(output_file),
+                    mime="application/pdf",
+                )
     # Clear chat history
     if st.button("Clear Chat History"):
         st.session_state['chat_history'] = []

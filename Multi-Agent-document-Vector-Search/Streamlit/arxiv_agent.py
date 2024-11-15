@@ -1,20 +1,22 @@
 import arxiv
 import nltk
-nltk.download('wordnet')
-nltk.download('omw-1.4') 
 from nltk.corpus import wordnet as wn
 import spacy
+
+# Download required NLTK resources
+nltk.download('wordnet')
+nltk.download('omw-1.4')
 
 # Load SpaCy model
 nlp = spacy.load("en_core_web_sm")
 
 class ArxivAgent:
-    def __init__(self, selected_document, user_query):
+    def __init__(self, selected_document: str, user_query: str):
         self.selected_document = selected_document
         self.user_query = user_query
 
-    def expand_query_with_synonyms(self, query):
-        """Expand the query by adding synonyms."""
+    def expand_query_with_synonyms(self, query: str) -> str:
+        """Expand the query by adding synonyms using NLTK and SpaCy."""
         doc = nlp(query)
         expanded_terms = set()
         for token in doc:
@@ -26,7 +28,7 @@ class ArxivAgent:
         expanded_query = query + " " + " ".join(expanded_terms)
         return expanded_query
 
-    def search_arxiv(self, query, num_results=10):
+    def search_arxiv(self, query: str, num_results: int = 10) -> list:
         """Search Arxiv for relevant papers."""
         expanded_query = self.expand_query_with_synonyms(query)
         
@@ -45,7 +47,7 @@ class ArxivAgent:
             papers.append(paper_info)
         return papers
 
-    def run(self):
+    def run(self) -> dict:
         """Execute the agent to search Arxiv."""
         print(f"Running ArxivAgent for document: {self.selected_document} and query: {self.user_query}")
         results = self.search_arxiv(self.user_query)
