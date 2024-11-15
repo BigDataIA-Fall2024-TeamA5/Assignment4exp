@@ -4,13 +4,13 @@ from langchain_core.messages import HumanMessage
 from document_agent import DocumentAgent
 from arxiv_agent import ArxivAgent
 from web_search_agent import WebSearchAgent
-from rag_agent import RAGagent
+from rag_agent import main_rag_process
 
 # Define agents
 document_agent = DocumentAgent()
 arxiv_agent = ArxivAgent()
 web_search_agent = WebSearchAgent()
-rag_agent = RAGagent()
+rag_agent = main_rag_process()
 
 # Define the `tool` functions for each agent
 @tool

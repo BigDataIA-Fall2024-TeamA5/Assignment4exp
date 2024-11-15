@@ -1,148 +1,121 @@
 import os
-import requests
-from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
-import boto3
 from pinecone import Pinecone
-from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
-from langchain.llms import OpenAI
+import boto3
+import openai
+import logging
 
 # Load environment variables
 load_dotenv()
 
-# Pinecone and AWS configurations from .env file
+# API Keys and Environment Variables
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "us-east-1")
+AI_AND_BIG_DATA_INDEX_NAME = os.getenv("AI_AND_BIG_DATA_INDEX_NAME")
+HORAN_ESG_RF_INDEX_NAME = os.getenv("HORAN_ESG_RF_INDEX_NAME")
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
 AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
-AWS_REGION = os.getenv("AWS_REGION")
-BUCKET_NAME = os.getenv("BUCKET_NAME")
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Validate environment variables
-if not all([PINECONE_API_KEY, AWS_ACCESS_KEY, AWS_SECRET_KEY, AWS_REGION, BUCKET_NAME]):
-    raise ValueError("Missing required environment variables. Please check your .env file.")
-
-# Initialize Pinecone client
+# Initialize clients
 pinecone_client = Pinecone(api_key=PINECONE_API_KEY)
-
-# Initialize embedding model
-sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
-
-# Initialize S3 client
-s3 = boto3.client(
+s3_client = boto3.client(
     "s3",
     aws_access_key_id=AWS_ACCESS_KEY,
     aws_secret_access_key=AWS_SECRET_KEY,
     region_name=AWS_REGION
 )
+openai.api_key = OPENAI_API_KEY
 
+class RAGAgent:
+    def __init__(self, document_name, query):
+        self.document_name = document_name
+        self.query = query
 
-class RAGagent:
-    """
-    RAGagent handles querying Pinecone for relevant embeddings, fetching document data from S3,
-    and running the RAG model to generate responses based on user queries.
-    """
+        # Map document names to corresponding Pinecone indexes
+        if document_name == "ai-and-big-data-in-investments.pdf":
+            self.index_name = AI_AND_BIG_DATA_INDEX_NAME
+        elif document_name == "horan-esg-rf-brief-2022-online.pdf":
+            self.index_name = HORAN_ESG_RF_INDEX_NAME
+        else:
+            raise ValueError(f"No index mapped for document: {document_name}")
 
-    def __init__(self, selected_document: str, user_query: str):
-        self.selected_document = selected_document
-        self.user_query = user_query
+    def get_or_create_pinecone_index(self, dimension=384):
+        """
+        Retrieve or create a Pinecone index for the specified document.
+        """
+        if self.index_name not in pinecone_client.list_indexes().names():
+            logging.info(f"Index '{self.index_name}' does not exist. Creating a new index...")
+            pinecone_client.create_index(
+                name=self.index_name,
+                dimension=dimension,  # Dimension for embeddings
+                metric='cosine'
+            )
+            logging.info(f"Index '{self.index_name}' created successfully.")
+        else:
+            logging.info(f"Index '{self.index_name}' already exists.")
+        return pinecone_client.Index(self.index_name)
+
+    def fetch_from_pinecone(self):
+        """
+        Fetch metadata from Pinecone for the given query.
+        """
+        index = self.get_or_create_pinecone_index()
+        query_vector = [0.0] * 384  # Placeholder for query vector; actual implementation may vary
+        response = index.query(
+            vector=query_vector, top_k=3, include_metadata=True
+        )
+        if "matches" in response:
+            return response["matches"]
+        else:
+            return []
+
+    def fetch_text_from_s3(self, s3_key):
+        """
+        Fetch the text file content from S3 using the provided S3 key.
+        """
+        try:
+            s3_response = s3_client.get_object(Bucket=BUCKET_NAME, Key=s3_key)
+            text = s3_response["Body"].read().decode("utf-8")
+            return text
+        except Exception as e:
+            raise ValueError(f"Error fetching data from S3 for key '{s3_key}': {str(e)}")
+
+    def process_query_with_openai(self, context):
+        """
+        Process the query using OpenAI's GPT model with the given context.
+        """
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": f"Context: {context}\n\nQuestion: {self.query}"}
+                ],
+                max_tokens=500
+            )
+            return response["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            raise ValueError(f"Error processing query with OpenAI: {str(e)}")
 
     def run(self):
         """
-        Main method to execute the RAG pipeline.
+        Execute the RAG process to retrieve an answer to the query.
         """
-        print(f"Running RAG agent for document: {self.selected_document} and query: {self.user_query}")
-        try:
-            response = self.run_rag_model(self.user_query, self.selected_document)
-            return {"answer": response}
-        except Exception as e:
-            print(f"Error running RAGagent: {e}")
-            return {"answer": f"Error: {str(e)}"}
+        # Fetch matches from Pinecone
+        matches = self.fetch_from_pinecone()
+        if not matches:
+            return {"answer": "No relevant matches found in Pinecone index.", "details": ""}
 
-    def run_rag_model(self, user_query, selected_document):
-        """
-        Executes the RAG pipeline by querying Pinecone and using OpenAI for response generation.
-        """
-        # Get Pinecone index based on document
-        index_name = self.get_index_name_from_document(selected_document)
-        pinecone_index = self.get_pinecone_index(index_name)
+        # Fetch context from S3 using the S3 key of the top match
+        s3_key = matches[0]["metadata"].get("s3_key")
+        if not s3_key:
+            return {"answer": "No S3 key found in the metadata of the top match.", "details": ""}
 
-        # Query Pinecone for relevant embeddings
-        pinecone_results = self.query_pinecone(user_query, pinecone_index)
-        if pinecone_results == "No matches found.":
-            return "No relevant data found in Pinecone."
+        context = self.fetch_text_from_s3(s3_key)
 
-        # Combine text from top results
-        combined_text = "\n".join([result['text'] for result in pinecone_results])
-
-        # Initialize LlamaIndex with combined text
-        documents = [SimpleDirectoryReader.from_string(combined_text).load_data()]
-        llm = OpenAI(model="text-davinci-003")
-        index = VectorStoreIndex.from_documents(documents, llm=llm)
-        query_engine = index.as_query_engine()
-
-        # Generate response using LlamaIndex
-        response = query_engine.query(user_query)
-        return str(response)
-
-    @staticmethod
-    def get_index_name_from_document(document_name):
-        """Convert document name to the exact Pinecone index name."""
-        index_mapping = {
-            "ai-and-big-data-in-investments.pdf": "ai-and-big-data-in-investments-index",
-            "horan-esg-rf-brief-2022-online.pdf": "horan-esg-rf-brief-2022-online-index",
-        }
-        if document_name in index_mapping:
-            return index_mapping[document_name]
-        raise ValueError(f"No matching index found for document: {document_name}")
-
-    def get_pinecone_index(self, index_name: str):
-        """
-        Retrieves the Pinecone index for the given name.
-        """
-        existing_indexes = [index.name for index in pinecone_client.list_indexes()]
-        if index_name not in existing_indexes:
-            raise ValueError(f"Index '{index_name}' does not exist in Pinecone.")
-        return pinecone_client.index(index_name)
-
-    def query_pinecone(self, user_query: str, index, top_k=3):
-        """
-        Queries Pinecone and fetches metadata from S3 if required.
-        """
-        # Generate query embedding
-        query_embedding = sentence_model.encode(user_query).tolist()
-
-        # Query Pinecone index
-        response = index.query(
-            vector=query_embedding,
-            top_k=top_k,
-            include_metadata=True
-        )
-
-        # Parse results
-        results = []
-        if response and 'matches' in response:
-            for match in response['matches']:
-                metadata = match['metadata']
-                s3_key = metadata.get("s3_key")
-
-                # Fetch text from S3 using s3_key
-                if s3_key:
-                    text = self.fetch_from_s3(s3_key)
-                else:
-                    text = "No text available"
-                score = match['score']
-                results.append({"text": text, "score": score})
-        else:
-            return "No matches found."
-        return results
-
-    def fetch_from_s3(self, s3_key: str) -> str:
-        """
-        Fetches text data from S3 using the given key.
-        """
-        try:
-            s3_response = s3.get_object(Bucket=BUCKET_NAME, Key=s3_key)
-            return s3_response["Body"].read().decode("utf-8")
-        except Exception as e:
-            print(f"Error fetching data from S3 for key {s3_key}: {e}")
-            return "Error fetching data from S3."
+        # Generate the final answer using OpenAI
+        answer = self.process_query_with_openai(context)
+        return {"answer": answer, "details": context}
