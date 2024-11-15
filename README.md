@@ -11,7 +11,6 @@ The primary objective is to develop a research tool that:
 - Parses documents and stores document vectors for similarity-based search.
 - Creates a multi-agent system for document-based research.
 - Provides an interactive interface for question-answering (Q&A) and research interactions.
-
 ---
 
 ## 🛠️ Project Components
@@ -45,7 +44,21 @@ The primary objective is to develop a research tool that:
 - [Langraph](https://langchain-ai.github.io/langgraph/tutorials/introduction/) for multi-agent setup.
 
 ---
+## Project Links
+- [Codelabs](https://codelabs-preview.appspot.com/?file_id=1yNnt1rujAKCxuPQZfn5caNeriK9FtuuvPX_qEk91zVk#5) for
+- [Video presentation](https://drive.google.com/drive/u/0/folders/1VozeLR1GTBusVJXih_fo1F7lMnY-L-HG) for the whole walk through of the project
+- [Deployment link](http://18.227.228.223:8501) Full live project deployment 
+---
 
+## Architecture Diagram
+![alt text]()
+
+---
+## Contribution
+- Aniket Patole - 45% - Airflow dags (docling,embeddings), Streamlit - RAGagent, Online Agent, Arxiv agent full code with implementation, Report and codelabs generation, Readme
+- Saurabh Vywahare - 30% - FastAPI and streamlit full connection and logic for all agents, Documentation, Codelabs, Deployment from scratch, Langgrapgh impletementation
+- Shreya Bage - 25% - Airflow dags help, Arxiv agent full, RAG Agent half logic.
+---
 ## 🚀 Setup Instructions
 
 1. **Clone the Repository:**
@@ -85,6 +98,8 @@ pip install -r requirements.txt
 
 streamlit run app.py
 	•	Access the interactive Q&A and research tools from the interface.
+
+---
 💻 **Usage**
 	1.	Document Processing:
 	•	The Airflow pipeline automates the parsing of documents, storing them as vectors in Pinecone for similarity search.
@@ -93,9 +108,11 @@ streamlit run app.py
 	•	Interact with agents to conduct Arxiv searches, retrieve additional web context, and use the RAG model for Q&A on document content.
 	3.	Results Export:
 	•	Export findings as a PDF report and structure them into a Codelabs document for future reference.
+---
 📑 **Submission Requirements**
 	•	GitHub Repository: Provide a project summary, proof of concept, issue tracker, and a 5-minute solution overview video.
 	•	Diagrams and Documentation: Include architecture diagrams, detailed Codelab documentation, and a link to the hosted application.
+---
 📚 **References**
 	•	Docling GitHub Repository
 	•	Pinecone Documentation
