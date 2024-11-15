@@ -85,6 +85,13 @@ def extract_document_name(url):
         st.error(f"Error extracting document name: {e}")
         return "Unknown Document"
 
+
+# Ensure session state initialization
+if 'chat_history' not in st.session_state:
+    st.session_state['chat_history'] = []
+
+if 'pdf_data' not in st.session_state:
+    st.session_state['pdf_data'] = []
 # Research interface
 def research_interface():
     """
@@ -126,7 +133,6 @@ def research_interface():
     )
 
     # Conduct research when the button is clicked
-    # Conduct research when the button is clicked
     if st.button("Submit Question"):
         if not selected_document_name or not user_question or not selected_agent:
             st.error("Please select a document, enter a question, and choose an agent to proceed.")
@@ -135,8 +141,6 @@ def research_interface():
         # Initialize results as an empty dictionary
         results = {"answer": "No answer generated.", "details": "No details provided."}
 
-        # Run the selected agent
-        agent = None  # Placeholder for the agent object
         try:
             # Initialize the agent based on the selection
             if selected_agent == "RAG Agent":
@@ -149,12 +153,8 @@ def research_interface():
                 st.error("Invalid agent selected.")
                 return
 
-            # Check if the agent has a 'run' method and execute it
-            if hasattr(agent, 'run') and callable(getattr(agent, 'run')):
-                results = agent.run()
-            else:
-                st.error("The selected agent is not properly configured or does not support execution.")
-                return
+            # Run the agent and get results
+            results = agent.run()
 
         except Exception as e:
             st.error(f"An error occurred while processing your request: {e}")
@@ -173,8 +173,8 @@ def research_interface():
     st.subheader("Research Notes")
     if st.session_state['chat_history']:
         for i, (question, answer) in enumerate(st.session_state['chat_history'], start=1):
-            st.text(f"Q{i}: {question}")
-            st.text(f"A: {answer}")
+            st.markdown(f"### Q{i}: {question}")
+            st.write(f"**A**: {answer}")
 
     # Button to generate a report
     if st.button("Generate Report"):
@@ -187,6 +187,8 @@ def research_interface():
                     file_name=os.path.basename(output_file),
                     mime="application/pdf",
                 )
+
+    # Button to generate a Codelabs file
     if st.button("Generate Codelabs"):
         output_file = generate_codelabs(st.session_state['chat_history'])
         if output_file:
@@ -195,13 +197,15 @@ def research_interface():
                     label="Download Codelabs",
                     data=file,
                     file_name=os.path.basename(output_file),
-                    mime="application/pdf",
+                    mime="text/markdown",
                 )
+
     # Clear chat history
     if st.button("Clear Chat History"):
         st.session_state['chat_history'] = []
         st.success("Chat history cleared.")
         st.rerun()
+
 
 # Main Interface
 def main():
