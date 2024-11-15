@@ -84,12 +84,8 @@ pip install -r requirements.txt
 	•	Run the research interface using Streamlit (or Coagents, if configured) for user interaction:
 
 streamlit run app.py
-
-
 	•	Access the interactive Q&A and research tools from the interface.
-
 💻 **Usage**
-
 	1.	Document Processing:
 	•	The Airflow pipeline automates the parsing of documents, storing them as vectors in Pinecone for similarity search.
 	2.	Research Interaction:
@@ -97,14 +93,10 @@ streamlit run app.py
 	•	Interact with agents to conduct Arxiv searches, retrieve additional web context, and use the RAG model for Q&A on document content.
 	3.	Results Export:
 	•	Export findings as a PDF report and structure them into a Codelabs document for future reference.
-
 📑 **Submission Requirements**
-
 	•	GitHub Repository: Provide a project summary, proof of concept, issue tracker, and a 5-minute solution overview video.
 	•	Diagrams and Documentation: Include architecture diagrams, detailed Codelab documentation, and a link to the hosted application.
-
 📚 **References**
-
 	•	Docling GitHub Repository
 	•	Pinecone Documentation
 	•	Langraph Introduction
